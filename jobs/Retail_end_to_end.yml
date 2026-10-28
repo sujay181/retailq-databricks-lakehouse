@@ -1,0 +1,41 @@
+resources:
+  jobs:
+    Retail_end_to_end:
+      name: Retail_end_to_end
+      trigger:
+        pause_status: UNPAUSED
+        file_arrival:
+          url: /Volumes/retail_s/volume/blob_source/transaction_source/
+      tasks:
+        - task_key: ingest_salesforce_to_bronze
+          pipeline_task:
+            pipeline_id: e437d429-c798-4470-a26d-572497b6a2bc
+            full_refresh: false
+        - task_key: ingest_postgres_to_bronze
+          depends_on:
+            - task_key: ingest_salesforce_to_bronze
+          pipeline_task:
+            pipeline_id: 819204e2-2702-45bc-9e8e-0a436428bf73
+            full_refresh: false
+        - task_key: ingest_blob_to_bronze
+          depends_on:
+            - task_key: ingest_postgres_to_bronze
+          notebook_task:
+            notebook_path: /Workspace/Users/sujaynarayana.181@gmail.com/retail_s/blob_to_bronze
+            source: WORKSPACE
+        - task_key: Silver_and_gold
+          depends_on:
+            - task_key: ingest_blob_to_bronze
+          pipeline_task:
+            pipeline_id: 7e65cffa-7405-48fe-a60c-0406f2f74e73
+        - task_key: Dashboard_refresh
+          depends_on:
+            - task_key: Silver_and_gold
+          dashboard_task:
+            subscription:
+              attachment:
+                page_attachment: {}
+            dashboard_id: 01f1d29118cb1c569c5e9761626a669b
+      queue:
+        enabled: true
+      performance_target: PERFORMANCE_OPTIMIZED
